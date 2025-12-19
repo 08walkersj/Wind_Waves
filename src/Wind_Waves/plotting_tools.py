@@ -234,11 +234,60 @@ def vx_bins2binby(start, end, step=1):
 def spectragram(raw, ax=False, gap_filling='fill', groupby='SWEEP', frequency='freq', datetime= 'DATETIME_Z', flux='AMPL_Z',
                 frequencies= np.arange(20, 1041, 4), frequency_step=4, frequency_bandwidth=3,
                 start=False, end=False, akr_mask=False, akr_threshold=0.1, vmin= False, vmax= False, no_data='white', gap_fill_kwargs={'max_gap_time' : int((183 / 3) * 3), 'max_gap_freq' : 70}, **pcolormesh_kwargs):
+    """
+    Build a spectrogram of averaged flux vs. time/frequency, with optional gap handling and plotting.
+
+    Parameters
+    ----------
+    raw : vaex DataFrame
+        Input dataset containing sweep, frequency, datetime, and flux columns.
+    ax : matplotlib.axes.Axes or False, optional
+        If provided, plot the spectrogram on this axis; otherwise return the grid arrays.
+    gap_filling : {'keep', 'ignore', 'fill'}, optional
+        Strategy for handling missing time/frequency bins. 'keep' leaves NaNs, 'ignore' uses native
+        frequencies only, 'fill' interpolates gaps via `gap_fill`.
+    groupby : str, optional
+        Column name used to group sweeps along the time axis.
+    frequency : str, optional
+        Column name for frequency values in `raw`.
+    datetime : str, optional
+        Column name for timestamp values in `raw`.
+    flux : str, optional
+        Column name for the measurement to plot.
+    frequencies : array-like, optional
+        Target frequency grid (Hz or kHz) when gap_filling is 'keep' or 'fill'.
+    frequency_step : float, optional
+        Step size for the target frequency grid.
+    frequency_bandwidth : float, optional
+        Width of each frequency bin.
+    start, end : scalar or False, optional
+        Optional datetime bounds to subset sweeps.
+    akr_mask : bool, optional
+        Apply AKR coefficient-of-variation mask before plotting.
+    akr_threshold : float, optional
+        Threshold for AKR_mask.
+    vmin, vmax : float or False, optional
+        Log-scale color limits for plotting; computed from data if False.
+    no_data : str, optional
+        Color used for NaN regions in the plot.
+    gap_fill_kwargs : dict, optional
+        Arguments passed to `gap_fill` when `gap_filling='fill'`.
+    **pcolormesh_kwargs :
+        Extra arguments forwarded to `ax.pcolormesh`.
+
+    Returns
+    -------
+    tuple
+        If `ax` is provided, returns (QuadMesh, (pixel time edges, pixel frequency edges, pixel values));
+        otherwise returns (pixel time edges, pixel frequency edges, pixel value).
+    """
     import matplotlib.colors as mp_colors
 
+    # Enforce supported gap filling options early
     if not gap_filling in ['keep', 'ignore', 'fill']:
         raise ValueError("Choice of gap filling method not understood please choose one of the following: 'keep', 'ignore' or 'fill'")
 
+    # Restrict dataset to desired sweep range (optionally by date bounds)
     if start and end:
         raw.select((raw[datetime]>=start)&(raw[datetime]<=end))
         sweep_start, sweep_end= raw[groupby].min(selection=True)-1, raw[groupby].max(selection=True)+1
@@ -246,14 +295,18 @@ def spectragram(raw, ax=False, gap_filling='fill', groupby='SWEEP', frequency='f
     else:
         sweep_start, sweep_end= raw[groupby].min(), raw[groupby].max()
         raw.select((raw[groupby]>=sweep_start+1)&(raw[groupby]<=sweep_end-1))
+
+    # Compute sweep and time bin edges
     sweep_binby= vx_bins2binby(raw[groupby].min(selection=True), raw[groupby].max(selection=True), 1)
     t1, t2= raw[datetime].min(raw[groupby], **sweep_binby), raw[datetime].max(raw[groupby], **sweep_binby)
     time_edges= np.concatenate(np.vstack([t1, t2]).T)
     if gap_filling in ['keep', 'fill']:
+        # Create regular frequency bins and initialize container
         freq_binby= vx_bins2binby(np.min(frequencies), np.max(frequencies), frequency_step)
         freq_edges = np.vstack([frequencies-frequency_bandwidth/2, frequencies+frequency_bandwidth/2])
         freq_edges = np.concatenate(freq_edges.T)
         values = np.full((len(freq_edges)-1, len(time_edges)-1), np.nan)
+        # Bin mean flux into regular grid
         rw = raw.mean(raw[flux], binby=[raw[frequency], raw[groupby]], limits=[freq_binby['limits'], sweep_binby['limits']],
                     shape=(freq_binby['shape'], sweep_binby['shape']), array_type='xarray', selection=True)
         if akr_mask:
@@ -263,6 +316,7 @@ def spectragram(raw, ax=False, gap_filling='fill', groupby='SWEEP', frequency='f
 
 
     elif gap_filling == 'ignore':
+        # Keep native irregular frequencies and map them into contiguous bins
         freqs = np.sort(raw[frequency].unique(selection=True))
         freq_edges = np.concatenate(([freqs[0]-np.diff(freqs)[0]/2], freqs[1:]-np.diff(freqs)/2, [freqs[-1]+np.diff(freqs)[-1]/2]))
         freq_list = np.sort(raw[frequency].unique())
@@ -273,24 +327,29 @@ def spectragram(raw, ax=False, gap_filling='fill', groupby='SWEEP', frequency='f
         raw['frequency_bin'] = raw[frequency].map(mapper)
         freq_bin_binby = vx_bins2binby(0, raw['frequency_bin'].max(), 1)
         values = np.full((len(freqs), len(time_edges)-1), np.nan)
+        # Bin mean flux on irregular frequency bins
         rw = raw.mean(raw[flux], binby=[raw.frequency_bin, raw[groupby]], limits=[freq_bin_binby['limits'], sweep_binby['limits']],
                       shape=(freq_bin_binby['shape'], sweep_binby['shape']), array_type='xarray', selection=True)
 
-        
+
         if akr_mask:
             rw= rw.where(AKR_mask(rw, raw.std(raw[flux], binby=[raw.frequency_bin, raw[groupby]], limits=[freq_bin_binby['limits'], sweep_binby['limits']],
                             shape=(freq_bin_binby['shape'], sweep_binby['shape']), array_type='xarray', selection=True), akr_threshold))
         values[:, ::2] = rw.values
+
+    # Clean zeros and optionally interpolate gaps
     values[values == 0] = np.nan
     if gap_filling=='fill':
         values= gap_fill(values, **gap_fill_kwargs)
     if ax :
+        # Derive color limits on log scale if not provided
         vmax_ = np.round(np.nanquantile(np.log10(values), .9))
         vmin_ = max([vmax_-1.5, np.round(np.nanmin(np.log10(values)))-1])
         if not vmax:
             vmax= 10**vmax_
         if not vmin:
             vmin= 10**vmin_
+        # Render pcolormesh with masked NaNs
         pc= ax.pcolormesh(time_edges, freq_edges, np.ma.masked_invalid(values), 
                                 norm=mp_colors.LogNorm(vmin=vmin, vmax=vmax), **pcolormesh_kwargs)
         pc.get_cmap().set_bad(no_data)
