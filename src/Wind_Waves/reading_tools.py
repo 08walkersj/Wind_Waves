@@ -241,7 +241,7 @@ def process(headers, data):
 RE = 6378100  # Earth's radius in meters
 au = 149597870700  # Astronomical unit in meters
 
-def normalise(data, position=__file__.split('src')[0]+'Example_Data/WIND_Position_1994_2010_vx.hdf5',
+def normalise(data, position=__file__.split('src')[0]+'Example_Data/WIND_Position_Mag.csv',
               datetime='Date_UTC', au_normalise=['VZPAL'], inplace=False):
     """
     Normalise data columns to 1 AU using spacecraft position.
@@ -278,7 +278,7 @@ def normalise(data, position=__file__.split('src')[0]+'Example_Data/WIND_Positio
     # Interpolate radius for each data point
     data['radius'] = np.interp(data.Date_UTC.astype(np.int64),
                                position.Date_UTC.astype(np.int64),
-                               position['radius'])
+                               position['R'])
     if len(au_normalise):
         dist_in_au = (data['radius'] * RE) / au  # Convert radius to AU
         for col in au_normalise:
