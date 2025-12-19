@@ -360,11 +360,11 @@ def integrate(df, flimits, sweep='SWEEP', fmin='fmin', fmax='fmax', distance=1.4
         fmin = dict(zip(flimits[sweep], flimits[fmin]))  # Convert fmin column to dictionary
         fmax = dict(zip(flimits[sweep], flimits[fmax]))  # Convert fmax column to dictionary
         df['integral_variable_limits'] = df.apply(integrate_with_variable_limits, axis=1, f_min=fmin, f_max=fmax)
-        return df.groupby('SWEEP')['integral_variable_limits'].apply(lambda x: sum_ints(x, distance)).reset_index()
+        return df.groupby(sweep)['integral_variable_limits'].apply(lambda x: sum_ints(x, distance)).reset_index()
     else:
         fmin, fmax = flimits  # Extract fixed frequency limits
         df[f'integral_{fmin}_{fmax}'] = df.apply(integrate_linear_segment, axis=1, f_min=fmin, f_max=fmax)
-        return df.groupby('SWEEP')[f'integral_{fmin}_{fmax}'].apply(lambda x: sum_ints(x, distance)).reset_index()
+        return df.groupby(sweep)[f'integral_{fmin}_{fmax}'].apply(lambda x: sum_ints(x, distance)).reset_index()
 def create_sweeps(data, time='datetime_ut', sweep='SWEEP', inplace=True):
     """
     Assigns unique sweep numbers to data based on time factorization.
