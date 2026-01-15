@@ -11,13 +11,15 @@ high_resolution_spectragram.ipynb in the notebooks folder demonstrates a working
 
 ## Relevant Papers
 This repository was developed to provide the code and methodology behind the following papers:
-- Walker 2025
-The notebooks folder not only contains examples to help users with this repository but the methodology behind the figures from each paper and a demonstration of how to recreate the figures
+- ### Walker 2026 (JGR: Space Physics): Frequency Extensions of Auroral Kilometric Radiation: the key to unlocking Earth's radio response to substorms
+    The notebooks folder not only contains a folder (Walker2026_Frequency_Extensions_of_AKR) with examples to help users with this repository but the methodology behind the figures from the paper and a demonstration of how to recreate the figures.
+- ### Walker 2026 (PRE Proceedings): Technique for treating discrete flux measurements in radio measurements from the RAD1 instrument on board WIND
+    The folder Walker2026_treating_discrete_flux_measurements_in_radio_measurements_from_RAD1 within the notebooks folder contains notebooks recreating the Figures from the paper.
 
 
 
-## Walker 2025
-For Walker 2025 to recreate the work in the study the following flow chart should be followed:
+## Walker 2026
+For Walker 2026 to recreate the work in the study the following flow chart should be followed:
 ```mermaid
 flowchart TD
     A[Step 1: Download_Data.ipynb] --> B[Step 2: Defining_Substorm_Epoch.ipynb]
