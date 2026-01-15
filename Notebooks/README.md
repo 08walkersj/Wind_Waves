@@ -1,0 +1,2 @@
+# Jupyter Notebook Examples
+This folder contains working examples of how the code within this repository can be used. Exact examples that produce the Figures from papers are provided in their corresponding subfolder.
