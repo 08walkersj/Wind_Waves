@@ -567,7 +567,7 @@ def find_fmin_extension(flims, event_list='combined',
     except ImportError:
         def progressbar(*args, **kwargs):
             return args[0]
-    from .reading_tools import find_closest
+    from Wind_Waves.reading_tools import find_closest
     import warnings
     flims = flims.copy()
     flims.sort_values(time, inplace=True)
@@ -645,7 +645,7 @@ def find_fmax_extension(flims, event_list,
     except ImportError:
         def progressbar(*args, **kwargs):
             return args[0]
-    from .reading_tools import find_closest
+    from Wind_Waves.reading_tools import find_closest
     import warnings
     flims = flims.copy()
     flims.sort_values(time, inplace=True)

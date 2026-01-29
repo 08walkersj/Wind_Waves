@@ -18,13 +18,15 @@ This repository was developed to provide the code and methodology behind the fol
 
 
 
-## Walker 2026
+## Walker 2026: Frequency Extensions of AKR
 For Walker 2026 to recreate the work in the study the following flow chart should be followed:
 ```mermaid
 flowchart TD
-    A[Step 1: Download_Data.ipynb] --> B[Step 2: Defining_Substorm_Epoch.ipynb]
-    B --> C[Step 3: Calculating_Frequency_Extension.ipynb]
-    C --> D[Step 4: Calculating_Integrated_Power.ipynb]
-    D --> E[Step 5: Figure Notebooks in Any Order]
+    A[Step 1: Download_Data.ipynb] --> B[Step 3: Refining_AKR_Frequency_Extent.ipynb]
+    B --> C[Step 2: Defining_Substorm_Epoch.ipynb]
+    C --> D[Step 3: Refining_AKR_Frequency_Extent.ipynb]
+    D --> E[Step 4: Calculating_Frequency_Extension.ipynb]
+    E --> F[Step 5: Calculating_Integrated_Power.ipynb]
+    F --> G[Step 6: Figure Notebooks in Any Order]
 
 
