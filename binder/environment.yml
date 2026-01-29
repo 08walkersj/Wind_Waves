@@ -1,0 +1,23 @@
+name: Wind_Waves
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.10
+  - pip
+  - numpy=1.26.*
+  - scipy=1.12.0
+  - pandas=2.2.1
+  - matplotlib=3.8.0
+  - joblib=1.2.0
+  - tqdm>=4.66
+  - progressbar2=4.3.2
+  - pytables<3.10.0
+  - vaex
+  - pydantic=1.10.8
+
+  - pip:
+      - PyPDF2==3.0.1
+      - apexpy==2.0.1
+      - cdflib==1.2.6

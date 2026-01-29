@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "Wind_Waves"                       # pip name; usually lower-case
+version = "0.1.0"
+description = "K-index and magnetometer tools for MagIE."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "GNU General Public License v3" }
+
+
+authors = [
+  { name = "Simon Walker", email = "simon.walker@dias.ie" },
+]
+
+dependencies = [
+  "numpy>=1.26,<2.0",
+  "pandas>=2.2.1",
+  "scipy>=1.12.0",
+  "matplotlib>=3.8.0",
+  "tqdm>=4.66",
+  "tables<3.10.0",
+  "joblib>=1.2.0",
+  "progressbar2>=4.3.2",
+  "vaex",
+  "PyPDF2>=3.0.1",
+  "cdflib>=1.2.6",
+  "apexpy>=2.0.1",
+  "pydantic=1.10.8"
+
+  
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8.3.0",
+]
+
+[project.urls]
+homepage = "https://github.com/08walkersj/Wind_Waves"
+repository = "https://github.com/08walkersj/Wind_Waves"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+Wind_Waves = ["*.json"]
