@@ -129,7 +129,7 @@ def attach_corner_label(ax, fig, text, location='below left', offset=(0, 0.04)):
     """
 
     # Create the label text at a dummy position; will be updated on draw
-    label = fig.text(0, 0, text, ha='left', va='top')
+    label = fig.text(0, 0, text, ha='right', va='top')
 
     def update_label(event):
         """
@@ -162,6 +162,7 @@ def attach_corner_label(ax, fig, text, location='below left', offset=(0, 0.04)):
         # Update label position and vertical alignment
         label.set_position((x, y))
         label.set_va(va)
+        label.set_ha('right')
 
     # Connect the update function to the figure's draw event
     fig.canvas.mpl_connect('draw_event', update_label)
@@ -390,7 +391,7 @@ def combine_handles_labels(*axes):
     
     return handles, labels
 class ArgumentError(Exception):
-     pass
+    pass
 def subplot_align(axis1, *axes, dim='x'):
     """
     Aligns the position of the given primary axis (axis1) with other specified axes based on the specified dimension.
@@ -893,3 +894,172 @@ def time_ridge_plot(flims, var_col= 'fmin', MLT_range= (10, 14), Epoch_column='E
     scale_ax.whisker.append(scale_ax.text(1.0, whisker_height / 2 +whisker_y, f'{whisker_val}\nPDE', va='center', fontsize=setup_fig_kwargs.get('label_fontsize', 20)))
     fig.suptitle(figtitle(*MLT_range), size=figtitle_size)
     return fig, ax, label_ax, numbers_ax, time_line_ax, scale_ax
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.projections.polar import PolarAxes
+
+class ArgumentError(Exception):
+     pass
+
+def polar(ax, hemisphere='Northern', mode='mag', **kwargs):
+    if mode.lower()=='mag':
+        return polar_mag(ax, hemisphere=hemisphere, **kwargs)
+    else:
+        raise ArgumentError("Incorrect mode input must be 'mag'")
+class polar_mag(PolarAxes):
+    def __init__(self, ax, hemisphere='Northern', **kwargs):
+        self.__dict__=ax.__dict__.copy()
+        self.get_figure=ax.get_figure
+        self.get_position= ax.get_position
+        self._set_position= ax._set_position
+        self.set_anchor= ax.set_anchor
+        self.set_mlt_zero_location= ax.set_theta_zero_location
+        self.set_title=ax.set_title
+        self.set_zorder= ax.set_zorder
+        if hemisphere.lower()=='northern':
+            self.Hadj= +1 # Hemispheric Adjuster
+        elif hemisphere.lower()=='southern':
+            self.Hadj= -1 # Hemispheric Adjuster
+        else:
+            raise ArgumentError(f"hemisphere argument incorrect. Must be 'northern' or southern. argument was set to be {hemisphere}")
+        label_kwargs= {key[5:]:kwargs.pop(key) for key in kwargs if key in ['tick_color', 'tick_size']}
+        ticks=list(range(0, 100, 10))
+        ax.set_rticks(ticks[:int(len(ax.get_yticklabels())/2)+2])
+        # ax.set_xticklabels([0, 3, 6, 9, 12, 15, 18, 21], **label_kwargs)
+        ax.set_xticks(np.deg2rad(np.arange(0, 360, 45)))
+        ax.set_xticklabels([f'{x:02d}' for x in range(0, 24, 3)], **label_kwargs)
+        ax.xaxis.set_tick_params(pad=10)
+        labels= np.array((range(90, -10, -10)))*self.Hadj
+        ax.set_yticklabels(labels[:len(ax.get_yticklabels())], **label_kwargs)
+        ax.set_theta_zero_location('S')
+        self.old_plot= ax.plot
+        self.old_scatter= ax.scatter
+        self.set_colatmax= ax.set_rmax
+        self.set_colatmin= ax.set_rmin
+        self.old_contourf= ax.contourf
+        self.old_pcolormesh= ax.pcolormesh
+        self.old_fillbetween= ax.fill_between
+        self.in_axes= ax.in_axes
+        self.ax= ax
+        self.old_quiver= ax.quiver
+        self.in_axes= ax.in_axes
+        self.set_xlabel= self.ax.set_xlabel
+        self.set_ylabel= self.ax.set_ylabel
+        ax.format_coord= self.make_format()
+        ax.autoscale(enable=False)
+        self.legend= ax.legend
+        self.xaxis_inverted()
+    
+    def xaxis_inverted(self, *args):
+        print('xaxis not inverted')
+        return False
+    def yaxis_inverted(self, *args):
+        print('yaxis not inverted')
+        return False
+    def set_xlim(self, *args):
+        print(f'set xlim not supported \n {args}')
+        return args
+    def set_ylim(self, *args):
+        print(f'set ylim not supported \n {args}')
+        return args
+    def set_xlabel(self, *args):
+        print(f'set_xlabel not supported \n {args}')
+        return args
+    def set_ylabel(self, *args):
+        print(f'set_ylabel not supported \n {args}')
+        return args
+    def set_latticks(self, ticks, labels=False, **kwargs):
+        if not labels:
+            labels=ticks
+        self.ax.set_rticks(90-ticks, labels=ticks, **kwargs)
+        return self.ax.set_yticklabels(labels, **kwargs)
+    def set_mltrange(self, mltrange, **kwargs):
+        print(mltrange)
+        theta, _ =self.conv(mltrange, [80]*2)
+        theta= np.rad2deg(theta)
+        theta[theta<0]+=360
+        theta= np.round(theta)
+        print(min(theta), max(theta))
+        self.ax.set_thetamin(min(theta), **kwargs)
+        self.ax.set_thetamax(max(theta), **kwargs)
+        mlt_labels=np.arange(0, 24, 3)
+        mlt_labels=mlt_labels[(mlt_labels>=mltrange[0]) & (mlt_labels<=mltrange[-1])]
+        theta2, _= self.conv(mlt_labels, [80]*len(mlt_labels))
+        self.ax.set_xticks(theta2)
+        self.ax.set_xticklabels(mlt_labels)
+        self.ax.set_thetamin(min(theta), **kwargs)
+        self.ax.set_thetamax(max(theta), **kwargs)
+    def conv(self, mlt, mlat):
+        mlt=np.array(mlt)
+        mlat=np.array(mlat*self.Hadj)
+        theta=mlt*np.pi/12
+        x= -np.sin(theta-np.pi/2)
+        y= np.sin(theta)
+        θ = np.arctan2(y, x)
+        return θ, 90-mlat
+    def conv_inv(self, theta, r):
+        mlat= 90-np.array([r])
+        mlt= np.array([theta]) *(12/np.pi)
+        mlt[mlt<-0]+=24
+        return mlt, mlat
+    def vec_theta(self, mlt):
+        theta=mlt*np.pi/12
+        x= np.sin(theta)
+        y= np.sin(theta-np.pi/2)
+        θ = np.arctan2(y, x)
+        return θ
+    def vec_conv(self, dr, dt, theta):
+        return dr * np.cos(theta) - dt*np.sin(theta), dr*np.sin(theta) + dt*np.cos(theta)
+    def plot(self, mlt, mlat, **kwargs):
+        return self.old_plot(*self.conv(mlt, mlat), **kwargs)
+    def scatter(self, mlt, mlat, **kwargs):
+        return self.old_scatter(*self.conv(mlt, mlat), **kwargs)
+    def set_rmin(self, mlat):
+        return self.set_colatmax(90-mlat)
+    def set_rmax(self, mlat):
+        return self.set_colatmin(90-mlat)
+    def contourf(self, mlt, mlat, z, **kwargs):
+        return self.old_contourf(*self.conv(mlt, mlat), z, **kwargs)
+    def pcolormesh(self, mlt, mlat, z, **kwargs):
+        return self.old_pcolormesh(*self.conv(mlt, mlat), z, **kwargs)
+    def fill_between(self, mlt, mlat, **kwargs):
+        return self.old_fillbetween(*self.conv(mlt, mlat), **kwargs)
+    def quiver(self, mlt, mlat, East, North, **kwargs):
+        v_theta= self.vec_theta(mlt)
+        theta, r= self.conv(mlt, mlat)
+        return self.old_quiver(theta, r, *self.vec_conv(-North, East, v_theta), **kwargs)
+    def hist2d(self, mlt, mlat , bins, hist_kwargs={}, pc_kwargs={}):
+        c, x, y=np.histogram2d(mlt, mlat, bins= bins, **hist_kwargs)
+        if 'weights' in hist_kwargs:
+            hist_kwargs['weights']=None
+            c2, x2, y2= np.histogram2d(mlt, mlat, bins=bins, **hist_kwargs)
+            c/=c2
+        return x, y, c, self.pcolormesh(*np.meshgrid(np.append(x, x[0]), y), np.append(c, [c[0]], axis=0).T, **pc_kwargs)
+    def imshow(self, image, mlt=None, mlat=None, image_format='xarray', inimage='image', **kwargs):
+        if image_format=='xarray':
+            mlt, mlat= image.mlt.values, image.mlat.values
+        mlt_ind, mlat_ind= np.isfinite(mlt), np.isfinite(mlat)
+        self.pcolormesh(mlt[mlt_ind&mlat_ind], mlat[mlt_ind&mlat_ind], image['image'].values[mlt_ind&mlat_ind], **kwargs)
+    def make_format(current):
+        # current and other are axes
+        def format_coord(theta, r):
+            # x, y are data coordinates
+            # convert to display coords
+            display_coord = current.conv_inv(theta,r)
+            # convert back to data coords with respect to ax
+            ax_coord= (float(i) for i in display_coord)
+            string= 'mlt={:.2f}, mlat={:.2f}'.format(*ax_coord) 
+            return (string)
+        return format_coord
+def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
+    import matplotlib as mpl
+    import numpy as np
+    if isinstance(cmap, str):
+        cmap= mpl.colormaps[cmap]
+    new_cmap = mpl.colors.LinearSegmentedColormap.from_list(
+        f'trunc({cmap.name},{minval:.2f},{maxval:.2f})',
+        cmap(np.linspace(minval, maxval, n))
+    )
+    return new_cmap
